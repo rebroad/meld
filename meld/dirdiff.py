@@ -1088,7 +1088,11 @@ class DirDiff(Gtk.Box, MeldDoc):
                     entries = [os.path.join(r, n) for r, n in zip(roots, names)]
                     child = self.model.add_entries(it, entries)
                     differences |= self._update_item_state(child)
-                    todo.append(self.model.get_path(child))
+                    # Avoid descending into directories that only exist in one
+                    # pane; the directory itself already represents the
+                    # difference and scanning it can be unnecessarily costly.
+                    if sum(1 for entry in entries if os.path.exists(entry)) > 1:
+                        todo.append(self.model.get_path(child))
                 for names in allfiles:
                     entries = [os.path.join(r, n) for r, n in zip(roots, names)]
                     child = self.model.add_entries(it, entries)
