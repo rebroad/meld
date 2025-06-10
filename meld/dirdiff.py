@@ -25,6 +25,7 @@ import stat
 import sys
 import typing
 import unicodedata
+import time
 from collections import namedtuple
 from decimal import Decimal
 from mmap import ACCESS_COPY, mmap
@@ -39,7 +40,7 @@ from meld.const import FILE_FILTER_ACTION_FORMAT, MISSING_TIMESTAMP
 from meld.externalhelpers import open_files_external
 from meld.iohelpers import find_shared_parent_path, trash_or_confirm
 from meld.melddoc import MeldDoc
-from meld.misc import all_same, apply_text_filters, with_focused_pane
+from meld.misc import all_same, apply_text_filters, with_focused_pane, debug_print, performance_monitor
 from meld.recent import RecentType
 from meld.settings import bind_settings, get_meld_settings, settings
 from meld.treehelpers import refocus_deleted_path, tree_path_as_tuple
@@ -1079,7 +1080,9 @@ class DirDiff(Gtk.Box, tree.TreeviewCommon, MeldDoc):
                         os.path.join(r, n) for r, n in zip(roots, names)]
                     child = self.model.add_entries(it, entries)
                     differences |= self._update_item_state(child)
-                    todo.append(self.model.get_path(child))
+                    # Only add to todo if directory exists in multiple panes
+                    if sum(1 for e in entries if os.path.exists(e)) > 1:
+                        todo.append(self.model.get_path(child))
                 for names in allfiles:
                     entries = [
                         os.path.join(r, n) for r, n in zip(roots, names)]
@@ -1508,6 +1511,8 @@ class DirDiff(Gtk.Box, tree.TreeviewCommon, MeldDoc):
 
     @Gtk.Template.Callback()
     def on_treeview_row_activated(self, view, path, column):
+        debug_print("Starting file diff from directory view")
+        start_time = time.time()
         pane = self.treeview.index(view)
         it = self.model.get_iter(path)
         rows = self.model.value_paths(it)
@@ -1527,6 +1532,7 @@ class DirDiff(Gtk.Box, tree.TreeviewCommon, MeldDoc):
                 view.collapse_row(path)
             else:
                 view.expand_row(path, False)
+        debug_print(f"File diff activation took {time.time() - start_time:.3f} seconds")
 
     @Gtk.Template.Callback()
     def on_treeview_row_expanded(self, view, it, path):
@@ -1699,16 +1705,9 @@ class DirDiff(Gtk.Box, tree.TreeviewCommon, MeldDoc):
         action.set_state(state)
         self.refresh()
 
-        #
-        # Selection
-        #
     def _get_selected_paths(self, pane):
         assert pane is not None
         return self.treeview[pane].get_selection().get_selected_rows()[1]
-
-        #
-        # Filtering
-        #
 
     def _filter_on_state(self, roots, fileslist):
         """Get state of 'files' for filtering purposes.
@@ -1888,8 +1887,15 @@ class DirDiff(Gtk.Box, tree.TreeviewCommon, MeldDoc):
 
         self.num_panes = num_panes
 
+    @performance_monitor
     def refresh(self):
+        debug_print("Starting directory view refresh")
+        start_time = time.time()
+        self.model.clear()
+        self.row_expansions.clear()
+        self.marked = None
         self.set_locations()
+        debug_print(f"Directory view refresh took {time.time() - start_time:.3f} seconds")
 
     def recompute_label(self):
         root = self.model.get_iter_first()

@@ -192,9 +192,37 @@ class MeldBufferData(GObject.GObject):
     def is_special(self):
         try:
             info = self._gfile.query_info(
-                Gio.FILE_ATTRIBUTE_STANDARD_TYPE, 0, None)
-            return info.get_file_type() == Gio.FileType.SPECIAL
-        except (AttributeError, GLib.GError):
+                Gio.FILE_ATTRIBUTE_STANDARD_TYPE + "," +
+                Gio.FILE_ATTRIBUTE_STANDARD_IS_SYMLINK + "," +
+                Gio.FILE_ATTRIBUTE_STANDARD_IS_BACKUP + "," +
+                Gio.FILE_ATTRIBUTE_STANDARD_IS_HIDDEN,
+                0, None)
+
+            # Check if it's a special file type
+            if info.get_file_type() == Gio.FileType.SPECIAL:
+                return True
+
+            # Check if it's a symlink
+            if info.get_attribute_boolean(Gio.FILE_ATTRIBUTE_STANDARD_IS_SYMLINK):
+                return True
+
+            # Check if it's a backup file
+            if info.get_attribute_boolean(Gio.FILE_ATTRIBUTE_STANDARD_IS_BACKUP):
+                return True
+
+            # Check if it's a hidden file
+            if info.get_attribute_boolean(Gio.FILE_ATTRIBUTE_STANDARD_IS_HIDDEN):
+                return True
+
+            # Check if it's in /dev
+            path = self._gfile.get_path()
+            if path and path.startswith('/dev/'):
+                return True
+
+            return False
+
+        except (AttributeError, GLib.GError) as e:
+            log.warning(f"Error checking if file is special: {e}")
             return False
 
     @property

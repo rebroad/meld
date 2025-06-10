@@ -34,6 +34,8 @@ class SavedWindowState(GObject.GObject):
         type=bool, nick='Is window maximized', default=False)
     is_fullscreen = GObject.Property(
         type=bool, nick='Is window fullscreen', default=False)
+    is_minimized = GObject.Property(
+        type=bool, nick='Is window minimized', default=False)
 
     def bind(self, window):
         window.connect('size-allocate', self.on_size_allocate)
@@ -51,13 +53,14 @@ class SavedWindowState(GObject.GObject):
         self.settings.bind('width', self, 'width', bind_flags)
         self.settings.bind('height', self, 'height', bind_flags)
         self.settings.bind('is-maximized', self, 'is-maximized', bind_flags)
+        self.settings.bind('is-minimized', self, 'is-minimized', bind_flags)
 
         window.set_default_size(self.props.width, self.props.height)
         if self.props.is_maximized:
             window.maximize()
 
     def on_size_allocate(self, window, allocation):
-        if not (self.props.is_maximized or self.props.is_fullscreen):
+        if not (self.props.is_maximized or self.props.is_fullscreen or self.props.is_minimized):
             width, height = window.get_size()
             if width != self.props.width:
                 self.props.width = width
@@ -74,3 +77,11 @@ class SavedWindowState(GObject.GObject):
         is_fullscreen = state & Gdk.WindowState.FULLSCREEN
         if is_fullscreen != self.props.is_fullscreen:
             self.props.is_fullscreen = is_fullscreen
+
+        is_minimized = state & Gdk.WindowState.ICONIFIED
+        if is_minimized != self.props.is_minimized:
+            self.props.is_minimized = is_minimized
+            # Log window state changes for debugging
+            import logging
+            log = logging.getLogger(__name__)
+            log.info(f"Window minimized state changed: {is_minimized}")

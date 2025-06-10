@@ -22,8 +22,12 @@ import collections
 import errno
 import functools
 import os
+import re
 import shutil
 import subprocess
+import sys
+import time
+import unicodedata
 from pathlib import PurePath
 from typing import (
     TYPE_CHECKING,
@@ -464,3 +468,20 @@ def calc_syncpoint(adj: Gtk.Adjustment) -> float:
     last_scale = (current - bottom_val) / half_a_screen
     syncpoint += 0.5 * max(0, last_scale)
     return syncpoint
+
+
+def performance_monitor(func):
+    """Decorator to monitor function execution time."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        debug_print(f"{func.__name__} took {end_time - start_time:.3f} seconds")
+        return result
+    return wrapper
+
+
+def debug_print(*args, **kwargs):
+    """Print debug messages to stderr."""
+    print(*args, file=sys.stderr, **kwargs)

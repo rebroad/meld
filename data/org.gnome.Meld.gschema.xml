@@ -42,7 +42,15 @@
       </key>
       <key name="is-maximized" type="b">
           <default>false</default>
-          <summary>Default window maximized state</summary>
+          <summary>Default window maximised state</summary>
+      </key>
+      <key name="is-fullscreen" type="b">
+          <default>false</default>
+          <summary>Default window fullscreen state</summary>
+      </key>
+      <key name="is-minimized" type="b">
+          <default>false</default>
+          <summary>Default window minimized state</summary>
       </key>
   </schema>
 

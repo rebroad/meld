@@ -391,32 +391,67 @@ class TreeViewChunkMap(ChunkMap):
         STATE_MODIFIED: "replace",
     }
 
-    def __init__(self):
+    def __init__(self, treeview):
+        """Initialize the chunk map widget."""
         super().__init__()
+        self.treeview = treeview
+        self.model = None
+        self._model_changed_id = None
         self.model_signal_ids = []
 
-    def do_realize(self):
+        # Connect to treeview signals
         self.treeview.connect('row-collapsed', self.clear_cached_map)
         self.treeview.connect('row-expanded', self.clear_cached_map)
         self.treeview.connect('notify::model', self.connect_model)
-        self.connect_model()
-
-        return ChunkMap.do_realize(self)
 
     def connect_model(self, *args):
-        for model, signal_id in self.model_signal_ids:
-            model.disconnect(signal_id)
+        """Connect to the model and set up signals."""
+        try:
+            # Disconnect from old model if it exists
+            if self.model and self._model_changed_id:
+                self.model.disconnect(self._model_changed_id)
+            self._model_changed_id = None
 
-        model = self.treeview.get_model()
-        self.model_signal_ids = [
-            (model, model.connect('row-changed', self.clear_cached_map)),
-            (model, model.connect('row-deleted', self.clear_cached_map)),
-            (model, model.connect('row-inserted', self.clear_cached_map)),
-            (model, model.connect('rows-reordered', self.clear_cached_map)),
-        ]
+            # Get the model from the treeview
+            model = self.treeview.get_model()
+            if not model:
+                print("DEBUG: No model available for chunkmap")
+                return
+
+            # Connect to new model
+            self._model_changed_id = model.connect('row-changed', self.clear_cached_map)
+            self.model = model
+            self.clear_cached_map()
+
+        except Exception as e:
+            print(f"DEBUG: Error connecting chunkmap to model: {e}")
+
+    def do_realize(self):
+        """Realize the widget and connect to the model."""
+        try:
+            Gtk.DrawingArea.do_realize(self)
+            # Only connect to model if we haven't already
+            if not self.model:
+                self.connect_model()
+        except Exception as e:
+            print(f"DEBUG: Error realizing chunkmap: {e}")
 
     def clear_cached_map(self, *args):
-        self._cached_map = None
+        """Clear the cached map and queue a redraw."""
+        try:
+            if self.model and not self.model.destroyed:
+                self.queue_draw()
+        except Exception as e:
+            print(f"DEBUG: Error clearing cached map: {e}")
+
+    def do_draw(self, cr):
+        """Draw the chunk map."""
+        try:
+            if not self.model or self.model.destroyed:
+                return
+            super().do_draw(cr)
+        except Exception as e:
+            print(f"DEBUG: Error drawing chunkmap: {e}")
 
     def get_map_base_colors(self):
         return self._make_map_base_colors(self.treeview)
@@ -449,12 +484,6 @@ class TreeViewChunkMap(ChunkMap):
                 chunkstart, laststate = index, state
 
         return tagged_diffs
-
-    def do_draw(self, context: cairo.Context) -> bool:
-        if not self.treeview:
-            return False
-
-        return ChunkMap.do_draw(self, context)
 
     def _scroll_to_location(self, location: float, animate: bool):
         if not self.treeview or self.adjustment.get_upper() <= 0:

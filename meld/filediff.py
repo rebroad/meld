@@ -18,6 +18,7 @@ import copy
 import functools
 import logging
 import math
+import time
 from enum import Enum
 from typing import Optional, Tuple, Type
 
@@ -65,6 +66,29 @@ from meld.ui.util import (
 from meld.undo import UndoSequence
 
 log = logging.getLogger(__name__)
+
+# Add debug output with rate limiting
+last_debug_output = 0
+DEBUG_INTERVAL = 1.0  # seconds between debug messages
+
+def debug_print(message):
+    global last_debug_output
+    current_time = time.time()
+    if current_time - last_debug_output >= DEBUG_INTERVAL:
+        log.info(f"[DEBUG] {message}")
+        last_debug_output = current_time
+
+def performance_monitor(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        duration = end_time - start_time
+        if duration > 0.1:  # Only log operations that take more than 100ms
+            debug_print(f"{func.__name__} took {duration:.2f} seconds")
+        return result
+    return wrapper
 
 
 def with_scroll_lock(lock_attr):
@@ -1290,9 +1314,13 @@ class FileDiff(Gtk.Box, MeldDoc):
                     'resolve', [conflict_gfile.get_path()], sync=True)
 
     def on_delete_event(self):
+        debug_print("Starting file diff delete event")
+        start_time = time.time()
         self.state = ComparisonState.Closing
         response = self.check_save_modified()
         if response == Gtk.ResponseType.OK:
+            debug_print("Cleaning up file diff")
+            cleanup_start = time.time()
             meld_settings = get_meld_settings()
             for h in self.settings_handlers:
                 meld_settings.disconnect(h)
@@ -1302,20 +1330,24 @@ class FileDiff(Gtk.Box, MeldDoc):
                 buf.data.disconnect_monitor()
 
             try:
+                debug_print("Stopping cached match")
+                match_start = time.time()
                 self._cached_match.stop()
                 self._cached_match = None
+                debug_print(f"Cached match cleanup took {time.time() - match_start:.3f} seconds")
             except Exception:
                 # Ignore any cross-process exceptions that happen when
                 # shutting down our matcher process.
                 log.exception('Failed to shut down matcher process')
+            debug_print(f"Total cleanup took {time.time() - cleanup_start:.3f} seconds")
             # TODO: Base the return code on something meaningful for VC tools
             self.close_signal.emit(0)
         elif response == Gtk.ResponseType.CANCEL:
             self.state = ComparisonState.Normal
         elif response == Gtk.ResponseType.APPLY:
             # We have triggered an async save, and need to let it finish
-            ...
-
+            pass
+        debug_print(f"Total file diff delete event took {time.time() - start_time:.3f} seconds")
         return response
 
     def _scroll_to_actions(self, actions):
@@ -1640,6 +1672,16 @@ class FileDiff(Gtk.Box, MeldDoc):
         buf.data.reset(gfile, MeldBufferState.LOADING)
         self.file_open_button[pane].props.file = gfile
 
+        # Check if file is special before loading
+        if buf.data.is_special:
+            filename = GLib.markup_escape_text(gfile.get_parse_name())
+            primary = _("Warning: %s is a special file") % filename
+            secondary = _("This file may not be readable or may cause issues. Do you want to continue?")
+            self.msgarea_mgr[pane].add_action_msg(
+                'dialog-warning-symbolic', primary, secondary, _("Continue"),
+                lambda: self._load_special_file(pane, gfile, encoding))
+            return
+
         self.filelabel[pane].props.parent_gfile = None
         # FIXME: this was self.textbuffer[pane].data.label, which could be
         # either a custom label or the fallback
@@ -1668,6 +1710,34 @@ class FileDiff(Gtk.Box, MeldDoc):
             callback=self.file_loaded,
             user_data=(pane, errors),
         )
+
+    def _load_special_file(self, pane, gfile, encoding):
+        """Handle loading of special files after user confirmation"""
+        buf = self.textbuffer[pane]
+        self.filelabel[pane].props.gfile = gfile
+
+        try:
+            # Try to read the file with a timeout
+            stream = gfile.read()
+            loader = GtkSource.FileLoader.new_from_stream(
+                buf, buf.data.sourcefile, stream)
+
+            custom_candidates = get_custom_encoding_candidates()
+            if encoding:
+                custom_candidates = [encoding]
+            if custom_candidates:
+                loader.set_candidate_encodings(custom_candidates)
+
+            loader.load_async(
+                GLib.PRIORITY_HIGH,
+                callback=self.file_loaded,
+                user_data=(pane,)
+            )
+        except GLib.Error as e:
+            filename = GLib.markup_escape_text(gfile.get_parse_name())
+            primary = _("Error reading special file %s") % filename
+            self.msgarea_mgr[pane].add_dismissable_msg(
+                'dialog-error-symbolic', primary, str(e))
 
     def get_comparison(self):
         uris = [b.data.gfile for b in self.textbuffer[:self.num_panes]]
@@ -1871,7 +1941,9 @@ class FileDiff(Gtk.Box, MeldDoc):
         for i in range(self.num_panes):
             self.textbuffer[i].set_language(langs[i])
 
+    @performance_monitor
     def _compare_files_internal(self):
+        debug_print("Starting file comparison")
         for i in self._merge_files():
             yield i
         for i in self._diff_files():
@@ -1899,7 +1971,9 @@ class FileDiff(Gtk.Box, MeldDoc):
             'dialog-warning-symbolic', primary, secondary, _("_Reload"),
             self.action_revert)
 
+    @performance_monitor
     def refresh_comparison(self, *args):
+        debug_print("Refreshing comparison")
         """Refresh the view by clearing and redoing all comparisons"""
         self.pre_comparison_init()
         self.queue_draw()
@@ -1924,8 +1998,9 @@ class FileDiff(Gtk.Box, MeldDoc):
 
         self.set_action_enabled('merge-all', mergeable[0] or mergeable[1])
 
+    @performance_monitor
     def on_diffs_changed(self, linediffer, chunk_changes):
-
+        debug_print("Diffs changed")
         for pane in range(self.num_panes):
             pane_changes = list(self.linediffer.single_changes(pane))
             self.chunkmap[pane].chunks = pane_changes
@@ -2384,6 +2459,7 @@ class FileDiff(Gtk.Box, MeldDoc):
 
     @with_scroll_lock('_sync_hscroll_lock')
     def _sync_hscroll(self, adjustment):
+        debug_print("Synchronizing horizontal scroll")
         val = adjustment.get_value()
         for sw in self.scrolledwindow[:self.num_panes]:
             adj = sw.get_hadjustment()
@@ -2392,6 +2468,7 @@ class FileDiff(Gtk.Box, MeldDoc):
 
     @with_scroll_lock('_sync_vscroll_lock')
     def _sync_vscroll(self, adjustment, master):
+        debug_print("Synchronizing vertical scroll")
         syncpoint = misc.calc_syncpoint(adjustment)
 
         # Sync point in buffer coords; this will usually be the middle
