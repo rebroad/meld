@@ -352,7 +352,7 @@ class MeldWindow(Gtk.ApplicationWindow):
                 if hasattr(page, 'get_model'):
                     model = page.get_model()
                     if model and hasattr(model, 'connect'):
-                        model.connect('row-inserted', lambda m, path, iter: debug_print(f"Page model row inserted: {path} - Path: {m.get_value(iter, m.column_index(COL_PATH, 0)) if hasattr(m, 'column_index') else 'unknown'}"))
+                        model.connect('row-inserted', lambda m, path, iter: debug_print(f"Page model row inserted: {path} - Path: {m.value_path(iter, 0) if hasattr(m, 'value_path') else 'unknown'}"))
                         model.connect('row-deleted', lambda m, path: debug_print(f"Page model row deleted: {path}"))
                         model.connect('rows-reordered', lambda m, path, iter, new_order: debug_print(f"Page model rows reordered: {new_order}"))
         
@@ -434,7 +434,7 @@ class MeldWindow(Gtk.ApplicationWindow):
                             if model:
                                 debug_print(f"Tree view model: {model}")
                                 if hasattr(model, 'connect'):
-                                    model.connect('row-inserted', lambda m, path, iter: debug_print(f"Model row inserted: {path} - Path: {m.get_value(iter, m.column_index(COL_PATH, 0)) if hasattr(m, 'column_index') else 'unknown'}"))
+                                    model.connect('row-inserted', lambda m, path, iter: debug_print(f"Model row inserted: {path} - Path: {m.value_path(iter, 0) if hasattr(m, 'value_path') else 'unknown'}"))
                                     model.connect('row-deleted', lambda m, path: debug_print(f"Model row deleted: {path}"))
                                     model.connect('rows-reordered', lambda m, path, iter, new_order: debug_print(f"Model rows reordered: {new_order}"))
                 
