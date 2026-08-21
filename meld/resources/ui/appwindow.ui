@@ -41,11 +41,10 @@
               </packing>
             </child>
             <child>
-              <object class="GtkMenuButton" id="recent_menu_button">
+              <object class="GtkButton" id="recent_menu_button">
                 <property name="visible">true</property>
                 <property name="tooltip-text" translatable="yes">Open a recent comparison</property>
-                <property name="use_popover">True</property>
-                <property name="popover">recent_popover</property>
+                <signal name="clicked" handler="on_recent_clicked" swapped="no"/>
                 <child>
                   <object class="GtkImage">
                     <property name="icon-name">document-open-recent-symbolic</property>
@@ -268,17 +267,4 @@
       </object>
     </child>
   </template>
-  <object class="GtkPopover" id="recent_popover">
-    <property name="can_focus">True</property>
-    <property name="visible">False</property>
-    <property name="width-request">400</property>
-    <property name="height-request">500</property>
-    <child>
-      <object class="RecentSelector" id="recent_selector">
-        <property name="visible">True</property>
-        <property name="can_focus">True</property>
-        <signal name="open-recent" handler="on_open_recent" swapped="no"/>
-      </object>
-    </child>
-  </object>
 </interface>

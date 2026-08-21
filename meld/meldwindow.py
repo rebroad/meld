@@ -39,6 +39,7 @@ from meld.newdifftab import NewDiffTab
 from meld.recent import RecentType, recent_comparisons
 from meld.settings import get_meld_settings
 from meld.task import LifoScheduler
+from meld.ui.recentselector import RecentSelector
 from meld.ui.notebooklabel import NotebookLabel
 from meld.vcview import VcView
 from meld.windowstate import SavedWindowState
@@ -64,6 +65,20 @@ class MeldWindow(Gtk.ApplicationWindow):
 
     def __init__(self):
         super().__init__()
+
+        self.recent_window = Gtk.Dialog(
+            title=_("Open a recent comparison"),
+            transient_for=self,
+            flags=Gtk.DialogFlags.MODAL,
+        )
+        self.recent_window.set_default_size(400, 500)
+        self.recent_window.set_resizable(True)
+        self.recent_window.connect(
+            'delete-event', self.on_recent_window_delete_event)
+        recent_selector = RecentSelector()
+        recent_selector.connect('open-recent', self.on_open_recent)
+        self.recent_window.get_content_area().add(recent_selector)
+        recent_selector.show_all()
 
         # Manually handle GAction additions
         actions = (
@@ -314,13 +329,21 @@ class MeldWindow(Gtk.ApplicationWindow):
             if page != srcpage:
                 page.on_file_changed(filename)
 
-    @Gtk.Template.Callback()
     def on_open_recent(self, recent_selector, uri):
         try:
             self.append_recent(uri)
+            self.recent_window.hide()
         except (IOError, ValueError):
             # FIXME: Need error handling, but no sensible display location
             log.exception(f'Error opening recent file {uri}')
+
+    def on_recent_window_delete_event(self, window, event):
+        window.hide()
+        return True
+
+    @Gtk.Template.Callback()
+    def on_recent_clicked(self, _button):
+        self.recent_window.present()
 
     def _append_page(self, page):
         nbl = NotebookLabel(page=page)

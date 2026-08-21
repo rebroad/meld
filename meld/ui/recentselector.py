@@ -90,5 +90,3 @@ class RecentSelector(Gtk.Grid):
         uri = self.recent_chooser.get_current_uri()
         if uri:
             self.open_recent.emit(uri)
-
-        self.get_parent().popdown()
