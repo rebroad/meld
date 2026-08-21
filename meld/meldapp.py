@@ -246,7 +246,7 @@ class MeldApp(Adw.Application):
             command_line=command_line,
             usage=usage,
             description=_("Meld is a file and directory comparison tool."),
-            version="%prog " + meld.conf.__version__,
+            version="%prog " + meld.conf.get_version(),
         )
         parser.add_option(
             "-L",

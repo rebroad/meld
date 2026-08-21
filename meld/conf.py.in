@@ -1,10 +1,31 @@
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 
 __package__ = "meld"
 __version__ = "3.99.0"
+__commit__ = "@commit@"
+
+
+def get_version():
+    commit = __commit__
+    if commit.startswith("@"):
+        try:
+            commit = subprocess.run(
+                ["git", "rev-parse", "--short=10", "HEAD"],
+                cwd=Path(__file__).resolve().parent.parent,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+        except (OSError, subprocess.CalledProcessError):
+            commit = ""
+
+    if commit:
+        return f"{__version__}-{commit}"
+    return __version__
 
 APPLICATION_NAME = 'Meld'
 APPLICATION_ID = 'org.gnome.Meld'

@@ -95,6 +95,7 @@ if not is_wheel
     'configured': 'True',
     'is_wheel': 'False',
     'is_devel': (is_devel ? 'True' : 'False'),
+    'commit': commit,
   }
 else
   app_config = {
@@ -102,6 +103,7 @@ else
     'configured': 'False',
     'is_wheel': 'True',
     'is_devel': (is_devel ? 'True' : 'False'),
+    'commit': commit,
   }
 endif
 

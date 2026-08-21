@@ -34,6 +34,23 @@ application_id = (is_devel ? application_id_no_profile + '.Devel' : application_
 
 is_wheel = get_option('is_wheel')
 
+commit = ''
+git = find_program('git', required: false)
+if git.found()
+  git_commit = run_command(
+    git,
+    '-C',
+    meson.current_source_dir(),
+    'rev-parse',
+    '--short=10',
+    'HEAD',
+    check: false,
+  )
+  if git_commit.returncode() == 0
+    commit = git_commit.stdout().strip()
+  endif
+endif
+
 prefix = get_option('prefix')
 
 bindir = get_option('bindir')
