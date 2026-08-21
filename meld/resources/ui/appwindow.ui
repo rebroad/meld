@@ -32,10 +32,10 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkMenuButton" id="recent_menu_button">
+                      <object class="GtkButton" id="recent_menu_button">
                         <property name="tooltip-text" translatable="yes">Open a recent comparison</property>
-                        <property name="popover">recent_popover</property>
                         <property name="icon-name">document-open-recent-symbolic</property>
+                        <signal name="clicked" handler="on_recent_clicked" swapped="no"/>
                       </object>
                     </child>
                   </object>
@@ -153,17 +153,6 @@
     </property>
  -->
   </template>
-  <object class="GtkPopover" id="recent_popover">
-    <property name="focusable">1</property>
-    <property name="width-request">400</property>
-    <property name="height-request">500</property>
-    <property name="child">
-      <object class="RecentSelector" id="recent_selector">
-        <property name="focusable">1</property>
-        <signal name="open-recent" handler="on_open_recent" swapped="no"/>
-      </object>
-    </property>
-  </object>
   <menu id="gear-menu">
     <section>
       <attribute name="id">file-section</attribute>

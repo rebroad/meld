@@ -41,6 +41,7 @@ from meld.recent import get_recent_comparisons
 from meld.settings import get_meld_settings
 from meld.task import LifoScheduler
 from meld.ui.gtkutil import BIND_DEFAULT_CREATE
+from meld.ui.recentselector import RecentSelector
 from meld.vcview import VcView
 from meld.windowstate import SavedWindowState
 
@@ -63,6 +64,18 @@ class MeldWindow(Adw.ApplicationWindow):
 
     def __init__(self):
         super().__init__()
+
+        self.recent_window = Gtk.Dialog(
+            title=_("Open a recent comparison"),
+            default_width=400,
+            default_height=500,
+            modal=True,
+            resizable=True,
+            hide_on_close=True,
+        )
+        recent_selector = RecentSelector()
+        recent_selector.connect("open-recent", self.on_open_recent)
+        self.recent_window.set_child(recent_selector)
 
         # Manually handle GAction additions
         actions = (
@@ -296,13 +309,19 @@ class MeldWindow(Adw.ApplicationWindow):
             if child != srcpage:
                 child.on_file_changed(filename)
 
-    @Gtk.Template.Callback()
     def on_open_recent(self, recent_selector, uri):
         try:
             self.append_recent(uri)
+            self.recent_window.close()
         except (IOError, ValueError):
             # FIXME: Need error handling, but no sensible display location
             log.exception(f"Error opening recent file {uri}")
+
+    @Gtk.Template.Callback()
+    def on_recent_clicked(self, _button):
+        self.recent_window.set_application(self.get_application())
+        self.recent_window.set_transient_for(self)
+        self.recent_window.present()
 
     def _append_page(self, doc):
         page = self.tabview.append(doc)

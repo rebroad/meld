@@ -85,7 +85,6 @@ class RecentSelector(Gtk.Grid):
     def activate_row(self, row):
         item = self.model.get_item(row.get_index())
         self.open_recent.emit(item.uri)
-        self.get_parent().get_parent().popdown()
 
     @Gtk.Template.Callback()
     def on_row_activate(self, _widget, row):
