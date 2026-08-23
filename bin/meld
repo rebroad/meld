@@ -24,6 +24,12 @@ import subprocess
 import sys
 from multiprocessing import freeze_support
 
+# GTK4's default renderer can hang in Mesa's X11 swap-buffer path while
+# rendering large text comparisons on some systems. Cairo remains responsive
+# for those comparisons, and an explicit GSK_RENDERER still opts into another
+# backend when desired.
+os.environ.setdefault("GSK_RENDERER", "cairo")
+
 # On Windows, pythonw.exe (which doesn't display a console window) supplies
 # dummy stdout and stderr streams that silently throw away any output. However,
 # these streams seem to have issues with flush() so we just redirect stdout and
