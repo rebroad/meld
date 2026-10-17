@@ -19,6 +19,7 @@ from enum import Enum
 
 from gi.repository import Gdk, Gio, GLib, GObject, Graphene, Gsk, Gtk, GtkSource, Pango
 
+from meld.indentation import get_indent_widths
 from meld.meldbuffer import MeldBuffer
 from meld.settings import bind_settings, get_meld_settings, settings
 from meld.style import colour_lookup_with_fallback, get_common_theme
@@ -123,6 +124,18 @@ class MeldSourceView(GtkSource.View, SourceViewHelperMixin):
 
     # Named so as not to conflict with the GtkSourceView property
     highlight_current_line_local = GObject.Property(type=bool, default=False)
+
+    def set_file_formatting(self, gfile):
+        path = gfile.get_path() if gfile else None
+        preference = settings.get_int("indent-width")
+        tab_width, indent_width = (
+            get_indent_widths(path, preference) if path else (preference, preference)
+        )
+        self.props.tab_width = tab_width
+        self.props.indent_width = indent_width
+
+    def on_indent_width_setting_changed(self, settings, key):
+        self.set_file_formatting(self.get_buffer().data.gfile)
 
     def get_show_line_numbers(self):
         return self._show_line_numbers
@@ -284,6 +297,7 @@ class MeldSourceView(GtkSource.View, SourceViewHelperMixin):
 
     def do_realize(self):
         bind_settings(self)
+        settings.connect("changed::indent-width", self.on_indent_width_setting_changed)
 
         def wrap_mode_from_bool(binding, from_value):
             if from_value:
@@ -308,6 +322,7 @@ class MeldSourceView(GtkSource.View, SourceViewHelperMixin):
             wrap_mode_to_bool,
         )
         self.wrap_mode_bool = wrap_mode_to_bool(None, self.props.wrap_mode)
+        self.set_file_formatting(self.get_buffer().data.gfile)
 
         self.bind_property(
             "draw-spaces-bool",

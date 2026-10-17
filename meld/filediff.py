@@ -1637,6 +1637,7 @@ class FileDiff(Gtk.Box, MeldDoc):
 
         buf = self.textbuffer[pane]
         buf.data.reset(gfile, MeldBufferState.LOADING)
+        self.textview[pane].set_file_formatting(gfile)
         self.file_open_button[pane].props.file = gfile
 
         self.filelabel[pane].props.parent_gfile = None
