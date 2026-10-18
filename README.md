@@ -75,6 +75,11 @@ $ cd _build
 $ ninja
 ```
 
+For the external build tree used on this machine, run `./build.sh` from this
+checkout. It reads source and Git metadata from this checkout and writes build
+outputs to `/mnt/kingston/builds/rebroad/src/meld.build/_build-from-source`.
+Set `MELD_BUILD_DIR` to use another build directory.
+
 You can then install Meld system-wide by running:
 
 ```sh
