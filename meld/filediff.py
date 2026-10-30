@@ -288,6 +288,7 @@ class FileDiff(Gtk.Box, MeldDoc):
         self._sync_vscroll_lock = False
         self._sync_hscroll_lock = False
         self.linediffer = self.differ()
+        self._diff_in_progress = False
         self.force_highlight = False
         self.force_load = False
 
@@ -749,6 +750,10 @@ class FileDiff(Gtk.Box, MeldDoc):
                 pane1_editable = self.textview[1].get_editable()
                 push_left = pane0_editable
                 push_right = pane1_editable
+
+        if self._diff_in_progress:
+            push_left, push_right, pull_left, pull_right, delete, \
+                copy_left, copy_right = (False,) * 7
 
         self.set_action_enabled('file-push-left', push_left)
         self.set_action_enabled('file-push-right', push_right)
@@ -1842,12 +1847,23 @@ class FileDiff(Gtk.Box, MeldDoc):
             yield 1
 
     def _diff_files(self, refresh=False):
+        self._diff_in_progress = True
+        for action in (
+            'file-push-left', 'file-push-right',
+            'file-pull-left', 'file-pull-right', 'file-delete',
+            'file-copy-left-up', 'file-copy-left-down',
+            'file-copy-right-up', 'file-copy-right-down',
+        ):
+            self.set_action_enabled(action, False)
+        self._set_merge_action_sensitivity()
         yield _("[%s] Computing differences") % self.label_text
         texts = self.buffer_filtered[:self.num_panes]
         self.linediffer.ignore_blanks = self.props.ignore_blank_lines
-        step = self.linediffer.set_sequences_iter(texts)
+        step = self.linediffer.set_sequences_iter(
+            texts, preview=self.num_panes == 2)
         while next(step) is None:
             yield 1
+        self._diff_in_progress = False
 
         if not refresh:
             for buf in self.textbuffer:
@@ -1919,6 +1935,11 @@ class FileDiff(Gtk.Box, MeldDoc):
         self.scheduler.add_task(self._diff_files(refresh=True))
 
     def _set_merge_action_sensitivity(self):
+        if self._diff_in_progress:
+            for action in ('merge-all-left', 'merge-all-right', 'merge-all'):
+                self.set_action_enabled(action, False)
+            return
+
         if self.focus_pane:
             editable = self.focus_pane.get_editable()
             pane_idx = self.textview.index(self.focus_pane)

@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from collections import Counter
+
 from gi.repository import GObject
 
 from meld.matchers.myers import (
@@ -502,11 +504,22 @@ class Differ(GObject.GObject):
                 for c in self._auto_merge(using, texts):
                     yield c
 
-    def set_sequences_iter(self, sequences):
+    def set_sequences_iter(self, sequences, preview=False):
         assert 0 <= len(sequences) <= 3
         self.diffs = [[], []]
         self.num_sequences = len(sequences)
         self.seqlength = [len(s) for s in sequences]
+
+        if preview and self.num_sequences == 2 and not self.syncpoints:
+            for diffs in self._preview_diffs(sequences[1], sequences[0]):
+                if diffs is None:
+                    yield None
+                    continue
+                self.diffs[0] = diffs
+                self._old_merge_cache = set(self._merge_cache)
+                self._changed_chunks = tuple()
+                self._update_merge_cache(sequences)
+                yield None
 
         for i in range(self.num_sequences - 1):
             if self.syncpoints:
@@ -521,8 +534,98 @@ class Differ(GObject.GObject):
                 yield None
             self.diffs[i] = matcher.get_difference_opcodes()
         self._initialised = True
+        self._old_merge_cache = set(self._merge_cache)
+        self._changed_chunks = tuple()
         self._update_merge_cache(sequences)
         yield 1
+
+    def _preview_diffs(self, a, b):
+        """Yield differences for regions bounded by unique shared lines.
+
+        These early results are useful for browsing, but are replaced by the
+        normal full-file comparison below. Unique lines are selected in order
+        in both files, so completed regions have concrete matching boundaries
+        and do not shift as later regions are processed.
+        """
+        if min(len(a), len(b)) <= 4096:
+            return
+
+        counts_a = Counter(a)
+        counts_b = Counter(b)
+        positions_b = {
+            line: index for index, line in enumerate(b)
+            if counts_b[line] == 1
+        }
+        candidates = [
+            (index, positions_b[line])
+            for index, line in enumerate(a)
+            if counts_a[line] == 1 and line in positions_b
+        ]
+
+        # Select an increasing subsequence of matching positions. This is the
+        # patience-diff anchor rule and keeps the regions in file order.
+        tails = []
+        tail_indices = []
+        previous = [-1] * len(candidates)
+        for index, (_, b_index) in enumerate(candidates):
+            lo, hi = 0, len(tails)
+            while lo < hi:
+                mid = (lo + hi) // 2
+                if tails[mid] < b_index:
+                    lo = mid + 1
+                else:
+                    hi = mid
+            if lo:
+                previous[index] = tail_indices[lo - 1]
+            if lo == len(tails):
+                tails.append(b_index)
+                tail_indices.append(index)
+            else:
+                tails[lo] = b_index
+                tail_indices[lo] = index
+
+        anchors = []
+        if tail_indices:
+            index = tail_indices[-1]
+            while index != -1:
+                anchors.append(candidates[index])
+                index = previous[index]
+            anchors.reverse()
+        if not anchors:
+            return
+
+        # Coalesce adjacent anchors into matching runs. Only non-identical
+        # gaps need work or a UI update.
+        runs = []
+        for a_index, b_index in anchors:
+            if (runs and a_index == runs[-1][1] and
+                    b_index == runs[-1][3]):
+                runs[-1] = (runs[-1][0], a_index + 1,
+                            runs[-1][2], b_index + 1)
+            else:
+                runs.append((a_index, a_index + 1, b_index, b_index + 1))
+
+        a_start = b_start = 0
+        diffs = []
+        for a_lo, a_hi, b_lo, b_hi in runs + [(len(a), len(a), len(b), len(b))]:
+            a_region, b_region = a[a_start:a_lo], b[b_start:b_lo]
+            if a_region != b_region:
+                matcher = self._matcher(None, a_region, b_region)
+                work = matcher.initialise()
+                while next(work) is None:
+                    yield None
+                diffs.extend(
+                    DiffChunk(
+                        chunk.tag,
+                        chunk.start_a + a_start,
+                        chunk.end_a + a_start,
+                        chunk.start_b + b_start,
+                        chunk.end_b + b_start,
+                    )
+                    for chunk in matcher.get_difference_opcodes()
+                )
+                yield list(diffs)
+            a_start, b_start = a_hi, b_hi
 
     def clear(self):
         self.diffs = [[], []]
