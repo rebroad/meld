@@ -204,6 +204,29 @@ class DiffTreeStore(SearchableTreeStore):
             if state in states:
                 yield it
 
+    def first_change_path(self):
+        """Return the first row considered a change for navigation."""
+        root = self.get_iter_first()
+        if root is None:
+            return None
+        unchanged = (STATE_NORMAL, STATE_NOCHANGE, STATE_EMPTY)
+        for it in self.inorder_search_down(root):
+            if self.get_state(it, 0) not in unchanged:
+                return self.get_path(it)
+        return None
+
+    def last_change_path(self):
+        """Return the last row considered a change for navigation."""
+        root = self.get_iter_first()
+        if root is None:
+            return None
+        unchanged = (STATE_NORMAL, STATE_NOCHANGE, STATE_EMPTY)
+        last_path = None
+        for it in self.inorder_search_down(root):
+            if self.get_state(it, 0) not in unchanged:
+                last_path = self.get_path(it)
+        return last_path
+
     def unsafe_set(self, treeiter, pane, keys_values):
         """ This must be fastest than super.set,
         at the cost that may crash the application if you don't

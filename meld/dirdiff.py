@@ -532,6 +532,8 @@ class DirDiff(Gtk.Box, tree.TreeviewCommon, MeldDoc):
             ('swap-2-panes', self.action_swap),
             ('folder-delete', self.action_delete),
             ('folder-expand', self.action_folder_expand),
+            ('first-change', self.action_first_change),
+            ('last-change', self.action_last_change),
             ('next-change', self.action_next_change),
             ('next-pane', self.action_next_pane),
             ('open-external', self.action_open_external),
@@ -1418,12 +1420,19 @@ class DirDiff(Gtk.Box, tree.TreeviewCommon, MeldDoc):
     def on_treeview_cursor_changed(self, view):
         pane = self.treeview.index(view)
         if len(self.model) == 0:
+            for action in (
+                "previous-change", "next-change",
+                "first-change", "last-change",
+            ):
+                self.set_action_enabled(action, False)
             return
 
         cursor_path, cursor_col = self.treeview[pane].get_cursor()
         if not cursor_path:
             self.set_action_enabled("previous-change", False)
             self.set_action_enabled("next-change", False)
+            self.set_action_enabled("first-change", False)
+            self.set_action_enabled("last-change", False)
             self.current_path = cursor_path
             return
 
@@ -1461,6 +1470,9 @@ class DirDiff(Gtk.Box, tree.TreeviewCommon, MeldDoc):
             self.prev_path, self.next_path = prev, next_
             self.set_action_enabled("previous-change", prev is not None)
             self.set_action_enabled("next-change", next_ is not None)
+            has_changes = prev is not None or next_ is not None
+            self.set_action_enabled("first-change", has_changes)
+            self.set_action_enabled("last-change", has_changes)
 
         self.current_path = cursor_path
 
@@ -2006,6 +2018,18 @@ class DirDiff(Gtk.Box, tree.TreeviewCommon, MeldDoc):
 
     def action_next_change(self, *args):
         self.next_diff(Gdk.ScrollDirection.DOWN)
+
+    def action_first_change(self, *args):
+        self._go_to_change_path(self.model.first_change_path())
+
+    def action_last_change(self, *args):
+        self._go_to_change_path(self.model.last_change_path())
+
+    def _go_to_change_path(self, path):
+        if path:
+            pane = self.treeview.index(self.focus_pane) if self.focus_pane else 0
+            self.treeview[pane].expand_to_path(path)
+            self.treeview[pane].set_cursor(path)
 
     def action_refresh(self, *args):
         self.refresh()

@@ -347,11 +347,13 @@ class FileDiff(Gtk.Box, MeldDoc):
             ('find-next', self.action_find_next),
             ('find-previous', self.action_find_previous),
             ('find-replace', self.action_find_replace),
+            ('first-change', self.action_first_change),
             ('format-as-patch', self.action_format_as_patch),
             ('go-to-line', self.action_go_to_line),
             ('merge-all-left', self.action_pull_all_changes_left),
             ('merge-all-right', self.action_pull_all_changes_right),
             ('merge-all', self.action_merge_all_changes),
+            ('last-change', self.action_last_change),
             ('next-change', self.action_next_change),
             ('next-pane', self.action_next_pane),
             ('open-external', self.action_open_external),
@@ -868,6 +870,14 @@ class FileDiff(Gtk.Box, MeldDoc):
 
     def action_next_change(self, *args):
         self.next_diff(Gdk.ScrollDirection.DOWN)
+
+    def action_first_change(self, *args):
+        if self.linediffer.diff_count():
+            self.go_to_chunk(0)
+
+    def action_last_change(self, *args):
+        if self.linediffer.diff_count():
+            self.go_to_chunk(self.linediffer.diff_count() - 1)
 
     def action_previous_conflict(self, *args):
         self.go_to_chunk(self.cursor.prev_conflict, self.cursor.pane)
@@ -1580,6 +1590,8 @@ class FileDiff(Gtk.Box, MeldDoc):
     def pre_comparison_init(self):
         self._disconnect_buffer_handlers()
         self.linediffer.clear()
+        self.set_action_enabled('first-change', False)
+        self.set_action_enabled('last-change', False)
         for bufferlines in self.buffer_filtered:
             bufferlines.clear_cache()
 
@@ -1864,6 +1876,9 @@ class FileDiff(Gtk.Box, MeldDoc):
         while next(step) is None:
             yield 1
         self._diff_in_progress = False
+        has_changes = self.linediffer.diff_count() > 0
+        self.set_action_enabled('first-change', has_changes)
+        self.set_action_enabled('last-change', has_changes)
 
         if not refresh:
             for buf in self.textbuffer:

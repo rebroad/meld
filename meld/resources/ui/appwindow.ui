@@ -69,6 +69,22 @@
             <child>
               <object class="GtkButton">
                 <property name="visible">True</property>
+                <property name="action-name">view.first-change</property>
+                <property name="tooltip-text" translatable="yes">Go to the first change</property>
+                <property name="focus_on_click">False</property>
+                <style><class name="image-button"/></style>
+                <child>
+                  <object class="GtkImage">
+                    <property name="visible">True</property>
+                    <property name="icon-name">media-skip-backward-symbolic</property>
+                  </object>
+                </child>
+              </object>
+              <packing><property name="pack-type">start</property></packing>
+            </child>
+            <child>
+              <object class="GtkButton">
+                <property name="visible">True</property>
                 <property name="action-name">view.previous-change</property>
                 <property name="tooltip-text" translatable="yes">Go to the previous change</property>
                 <property name="focus_on_click">False</property>
@@ -99,6 +115,21 @@
                   <object class="GtkImage">
                     <property name="visible">True</property>
                     <property name="icon-name">go-down-symbolic</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton">
+                <property name="visible">True</property>
+                <property name="action-name">view.last-change</property>
+                <property name="tooltip-text" translatable="yes">Go to the last change</property>
+                <property name="focus_on_click">False</property>
+                <style><class name="image-button"/></style>
+                <child>
+                  <object class="GtkImage">
+                    <property name="visible">True</property>
+                    <property name="icon-name">media-skip-forward-symbolic</property>
                   </object>
                 </child>
               </object>

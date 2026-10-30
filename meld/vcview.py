@@ -213,6 +213,8 @@ class VcView(Gtk.Box, tree.TreeviewCommon, MeldDoc):
         actions = (
             ('compare', self.action_diff),
             ('find', self.action_find),
+            ('first-change', self.action_first_change),
+            ('last-change', self.action_last_change),
             ('next-change', self.action_next_change),
             ('open-external', self.action_open_external),
             ('previous-change', self.action_previous_change),
@@ -903,6 +905,8 @@ class VcView(Gtk.Box, tree.TreeviewCommon, MeldDoc):
         if not cursor_path:
             self.set_action_enabled("previous-change", False)
             self.set_action_enabled("next-change", False)
+            self.set_action_enabled("first-change", False)
+            self.set_action_enabled("last-change", False)
             self.current_path = cursor_path
             return
 
@@ -936,6 +940,9 @@ class VcView(Gtk.Box, tree.TreeviewCommon, MeldDoc):
             self.prev_path, self.next_path = prev, next_
             self.set_action_enabled("previous-change", prev is not None)
             self.set_action_enabled("next-change", next_ is not None)
+            has_changes = prev is not None or next_ is not None
+            self.set_action_enabled("first-change", has_changes)
+            self.set_action_enabled("last-change", has_changes)
         self.current_path = cursor_path
 
     def next_diff(self, direction):
@@ -954,6 +961,18 @@ class VcView(Gtk.Box, tree.TreeviewCommon, MeldDoc):
 
     def action_next_change(self, *args):
         self.next_diff(Gdk.ScrollDirection.DOWN)
+
+    def action_first_change(self, *args):
+        path = self.model.first_change_path()
+        if path:
+            self.treeview.expand_to_path(path)
+            self.treeview.set_cursor(path)
+
+    def action_last_change(self, *args):
+        path = self.model.last_change_path()
+        if path:
+            self.treeview.expand_to_path(path)
+            self.treeview.set_cursor(path)
 
     def action_refresh(self, *args):
         self.set_location(self.location)

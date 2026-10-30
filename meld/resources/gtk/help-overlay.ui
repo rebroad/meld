@@ -140,6 +140,13 @@
             <child>
               <object class="GtkShortcutsShortcut">
                 <property name="visible">True</property>
+                <property name="accelerator">&lt;alt&gt;Home</property>
+                <property name="title" translatable="yes">Go to first change</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="visible">True</property>
                 <property name="accelerator">&lt;alt&gt;Up</property>
                 <property name="title" translatable="yes" context="shortcut window">Go to previous change</property>
               </object>
@@ -149,6 +156,13 @@
                 <property name="visible">True</property>
                 <property name="accelerator">&lt;alt&gt;Down</property>
                 <property name="title" translatable="yes" context="shortcut window">Go to next change</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="visible">True</property>
+                <property name="accelerator">&lt;alt&gt;End</property>
+                <property name="title" translatable="yes">Go to last change</property>
               </object>
             </child>
           </object>

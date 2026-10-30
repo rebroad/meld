@@ -11,7 +11,9 @@ VIEW_ACCELERATORS: Dict[str, Union[str, Sequence[str]]] = {
     'view.find-next': ('<Primary>G', 'F3'),
     'view.find-previous': ('<Primary><Shift>G', '<Shift>F3'),
     'view.find-replace': '<Primary>H',
+    'view.first-change': '<Alt>Home',
     'view.go-to-line': '<Primary>I',
+    'view.last-change': '<Alt>End',
     # Overridden in CSS
     'view.next-change': ('<Alt>Down', '<Alt>KP_Down', '<Primary>D'),
     'view.next-pane': '<Alt>Page_Down',
