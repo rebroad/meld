@@ -681,6 +681,21 @@ class FileDiff(Gtk.Box, MeldDoc):
             self.cursor.next_conflict = next_conflict
 
         self.cursor.line = line
+        self._update_change_navigation_sensitivity()
+
+    def _update_change_navigation_sensitivity(self):
+        diff_count = self.linediffer.diff_count()
+        pane = self._get_focused_pane()
+        if pane < 0 or pane >= self.num_panes:
+            pane = 1 if self.num_panes > 1 else 0
+        buf = self.textbuffer[pane]
+        line = buf.get_iter_at_mark(buf.get_insert()).get_line()
+        chunk, _, _ = self.linediffer.locate_chunk(pane, line)
+
+        self.set_action_enabled(
+            'first-change', diff_count > 0 and chunk != 0)
+        self.set_action_enabled(
+            'last-change', diff_count > 0 and chunk != diff_count - 1)
 
     def on_current_diff_changed(self, *args):
         try:
@@ -825,6 +840,7 @@ class FileDiff(Gtk.Box, MeldDoc):
         self.textview[pane].add_fading_highlight(
             mark0, mark1, 'focus-highlight', 400000, starting_alpha=0.3,
             anim_type=TextviewLineAnimationType.stroke)
+        self._update_change_navigation_sensitivity()
 
     @Gtk.Template.Callback()
     def on_linkmap_scroll_event(self, linkmap, event):
@@ -1876,9 +1892,7 @@ class FileDiff(Gtk.Box, MeldDoc):
         while next(step) is None:
             yield 1
         self._diff_in_progress = False
-        has_changes = self.linediffer.diff_count() > 0
-        self.set_action_enabled('first-change', has_changes)
-        self.set_action_enabled('last-change', has_changes)
+        self._update_change_navigation_sensitivity()
 
         if not refresh:
             for buf in self.textbuffer:
@@ -1988,6 +2002,7 @@ class FileDiff(Gtk.Box, MeldDoc):
                 from_pane, to_pane))
 
         removed_chunks, added_chunks, modified_chunks = chunk_changes
+        self._update_change_navigation_sensitivity()
 
         # We need to clear removed and modified chunks, and need to
         # re-highlight added and modified chunks.
